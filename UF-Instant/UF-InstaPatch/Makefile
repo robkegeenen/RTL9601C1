@@ -1,7 +1,14 @@
-OLT_FW_URL ?= https://dl.ui.com/firmwares/ufiber/UF-OLT.v4.3.1.3909.210421.0814.tar
+-include config.mk
 
-GPON_SN          ?= AAAAxxxxxxxx
-GPON_MAC         ?= xx:xx:xx:xx:xx:xx
+define check_var_msg
+$1 ($2) not specified.
+	Please specify all required variables either in the configuration file
+	or on the command line
+endef
+check_var = $(if $($(1)),,$(error $(check_var_msg)))
+
+$(call check_var,GPON_SN,GPON serial number)
+$(call check_var,GPON_MAC,GPON MAC address)
 DISABLE_WATCHDOG ?= 1
 
 BUILD_DIR  := build
@@ -36,6 +43,7 @@ fw_patched.img: $(ONU_FW_DIR)/fw_patched.img
 
 ### extract original OLT firmware
 $(OLT_FW_DIR)/fw.tar: | $(OLT_FW_DIR)/
+	$(call check_var,OLT_FW_URL,OLT firmware download URL)
 	wget -O $@ $(OLT_FW_URL)
 
 $(OLT_FW_DIR)/squashfs.tmp: $(OLT_FW_DIR)/fw.tar
