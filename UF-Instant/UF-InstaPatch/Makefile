@@ -19,13 +19,14 @@ FAKEROOT_ENV_FILE := $(BUILD_DIR)/fakeroot.env
 
 ### calculated variables
 # sanitize GPON SN
-GPON_SN_SERIAL := $(shell echo "$(GPON_SN)" | tr -dc [:xdigit:] | rev | cut -c-8 | rev | tr [:upper:] [:lower:])
-GPON_SN_MFGR   := $(shell \
+GPON_SN_SERIAL   := $(shell echo "$(GPON_SN)" | tr -dc [:xdigit:] | rev | cut -c-8 | rev | tr [:upper:] [:lower:])
+GPON_SN_MFGR_RAW := $(shell \
 	[ `echo "$(GPON_SN)" | wc -c` -lt 16 ] \
 		&& echo "$(GPON_SN)" | xxd -p -l 4 \
 		|| echo "$(GPON_SN)" | tr -dc [:xdigit:] | cut -c-8 | tr [:upper:] [:lower:])
-GPON_SN_RAW    := $(GPON_SN_MFGR)$(GPON_SN_SERIAL)
-GPON_SN        := $(shell echo "$(GPON_SN_MFGR)" | xxd -r -p)$(GPON_SN_SERIAL)
+GPON_SN_MFGR     := $(shell echo "$(GPON_SN_MFGR_RAW)" | xxd -r -p)
+GPON_SN_RAW      := $(GPON_SN_MFGR_RAW)$(GPON_SN_SERIAL)
+GPON_SN          := $(GPON_SN_MFGR)$(GPON_SN_SERIAL)
 
 # sanitize GPON MAC
 GPON_MAC_SAFE  := $(shell echo "$(GPON_MAC)" | tr -dc [:xdigit:] | tr [:upper:] [:lower:] | sed 's/../&:/g;s/:$$//')
@@ -81,6 +82,9 @@ $(ONU_FW_DIR)/squashfs-root/lib/modules/ubnthal.ko: $(ONU_FW_DIR)/squashfs-root
 	printf "$(GPON_SN_RAW)\0"	| $(call bin_patch_at_offset,$@,$(call bin_offset_of,$@,%02x%02x%02x%02x%02x%02x%02x%02x$$))
 	printf "$(GPON_MAC_SAFE)\n\0"	| $(call bin_patch_at_offset,$@,$(call bin_offset_of,$@,%02x:%02x:%02x:%02x:%02x:%02x\n$$))
 
+$(ONU_FW_DIR)/squashfs-root/bin/omci_app: $(ONU_FW_DIR)/squashfs-root
+	sed -i 's/UBNT/$(GPON_SN_MFGR)/g' $@
+
 $(ONU_FW_DIR)/squashfs-root/etc/init.d/rcS: $(ONU_FW_DIR)/squashfs-root
 ifneq ($(DISABLE_WATCHDOG),0)
 	sed -Ei 's%^#?(/bin/ubnt-watchdog &)$$%#\1%' $@
@@ -97,6 +101,7 @@ $(ONU_FW_DIR)/archive_patched: $(ONU_FW_DIR)/archive
 
 $(ONU_FW_DIR)/archive_patched/rootfs: $(ONU_FW_DIR)/archive_patched
 $(ONU_FW_DIR)/archive_patched/rootfs: $(ONU_FW_DIR)/squashfs-root/lib/modules/ubnthal.ko
+$(ONU_FW_DIR)/archive_patched/rootfs: $(ONU_FW_DIR)/squashfs-root/bin/omci_app
 $(ONU_FW_DIR)/archive_patched/rootfs: $(ONU_FW_DIR)/squashfs-root/etc/init.d/rcS
 $(ONU_FW_DIR)/archive_patched/rootfs: | $(ONU_FW_DIR)/squashfs-root/etc/modinfo.txt
 $(ONU_FW_DIR)/archive_patched/rootfs: $(ONU_FW_DIR)/squashfs-root
