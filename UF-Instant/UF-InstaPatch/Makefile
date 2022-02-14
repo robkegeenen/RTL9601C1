@@ -9,7 +9,7 @@ check_var = $(if $($(1)),,$(error $(check_var_msg)))
 
 $(call check_var,GPON_SN,GPON serial number)
 $(call check_var,GPON_MAC,GPON MAC address)
-DISABLE_WATCHDOG ?= 1
+DISABLE_WATCHDOG ?= 0
 
 BUILD_DIR  := build
 OLT_FW_DIR := $(BUILD_DIR)/olt
